@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perceptrón: ¿Delivery o Cocinar?</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Configuración de la fuente Inter y estilos base */
+        :root {
+            --color-delivery: #ef4444; /* Rojo/Delivery */
+            --color-cook: #10b981; /* Verde/Cocinar */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+            margin-top: -6px; /* Ajuste para centrar */
+        }
+        .slider-thumb-positive::-webkit-slider-thumb {
+            background: var(--color-delivery);
+        }
+        .slider-thumb-negative::-webkit-slider-thumb {
+            background: var(--color-cook);
+        }
+        /* Estilo para la barra de visualización de la frontera */
+        #visualization-bar {
+            height: 3rem;
+            position: relative;
+            background-color: var(--color-cook);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+            transition: background-color 0.5s ease;
+        }
+        #visualization-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            height: 100%;
+            width: 4px;
+            background-color: #f7f9fb; /* Color de la línea de frontera */
+            z-index: 10;
+        }
+        #visualization-pointer {
+            position: absolute;
+            top: 50%;
+            width: 1.5rem;
+            height: 1.5rem;
+            transform: translate(-50%, -50%);
+            background-color: #333;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+            z-index: 20;
+            transition: left 0.3s ease;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'delivery-red': '#ef4444',
+                        'cook-green': '#10b981',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="p-4 sm:p-8 flex justify-center items-center min-h-screen">
+
+    <div class="w-full max-w-4xl bg-white p-6 sm:p-10 rounded-xl shadow-2xl border border-gray-100">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">
+                Perceptrón: ¿Delivery o Cocinar? 🍔 vs. 🧑‍🍳
+            </h1>
+            <p class="text-gray-500 mt-2 text-lg">
+                Simulador de la Frontera de Decisión de un Perceptrón.
+            </p>
+        </header>
+        
+        <!-- Sección de Configuración del Modelo -->
+        <div class="mb-8 p-4 bg-gray-50 rounded-lg border">
+            <h2 class="text-xl font-semibold mb-3 text-gray-700">Parámetros del Modelo (Pesos y Sesgo Fijos)</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                <div><span class="font-medium">W₁ (Fatiga):</span> <code class="bg-yellow-100 p-1 rounded font-mono text-yellow-800">+0.5</code></div>
+                <div><span class="font-medium">W₂ (Urgencia):</span> <code class="bg-yellow-100 p-1 rounded font-mono text-yellow-800">+0.7</code></div>
+                <div><span class="font-medium">W₃ (Dinero):</span> <code class="bg-red-100 p-1 rounded font-mono text-red-800">-0.6</code></div>
+                <div><span class="font-medium">Sesgo (Bias, b):</span> <code class="bg-blue-100 p-1 rounded font-mono text-blue-800">-3.0</code></div>
+            </div>
+                <!-- <p class="mt-2 text-xs text-gray-400">La decisión se toma si el Puntaje Neto es $\ge 0$.</p>
+       -->
+              </div>
+
+        <!-- Inputs del Usuario -->
+        <div id="inputs-container" class="space-y-6 mb-12">
+            
+            <!-- x1: Nivel de Fatiga -->
+            <div class="input-group p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
+                <label for="x1" class="block text-lg font-medium text-gray-700 flex justify-between items-center">
+                    <span>Nivel de Fatiga Física 😴 (1 - 10)</span>
+                    <span id="x1-value" class="text-xl font-bold text-delivery-red">1.0</span>
+                </label>
+                <input type="range" id="x1" min="1" max="10" value="1" step="0.1"
+                       class="w-full h-2 mt-2 bg-gray-200 rounded-lg appearance-none cursor-pointer range-lg slider-thumb slider-thumb-positive">
+                <div class="flex justify-between text-sm text-gray-500 mt-1">
+                    <span>1 (Con energía)</span>
+                    <span>10 (Agotado)</span>
+                </div>
+            </div>
+
+            <!-- x2: Nivel de Urgencia/Hambre -->
+            <div class="input-group p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
+                <label for="x2" class="block text-lg font-medium text-gray-700 flex justify-between items-center">
+                    <span>Nivel de Urgencia/Hambre 🧽 (1 - 10)</span>
+                    <span id="x2-value" class="text-xl font-bold text-delivery-red">1.0</span>
+                </label>
+                <input type="range" id="x2" min="1" max="10" value="1" step="0.1"
+                       class="w-full h-2 mt-2 bg-gray-200 rounded-lg appearance-none cursor-pointer range-lg slider-thumb slider-thumb-positive">
+                <div class="flex justify-between text-sm text-gray-500 mt-1">
+                    <span>1 (Poca hambre)</span>
+                    <span>10 (Muy hambriento)</span>
+                </div>
+            </div>
+
+            <!-- x3: Dinero Disponible (ARS Input y Slider Sync) -->
+            <div class="input-group p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
+                <label class="block text-lg font-medium text-gray-700 flex justify-between items-center mb-2">
+                    <span>Dinero Disponible en la Cuenta 💰 (Escala Perceptrón 1 - 10)</span>
+                    <span id="x3-value" class="text-xl font-bold text-cook-green">1.0</span>
+                </label>
+                
+                <!-- Campo para Ingreso en ARS -->
+                <div class="mb-4">
+                    <label for="ars-input" class="block text-sm font-medium text-gray-500 mb-1">
+                        Ingresar Monto Exacto (ARS)
+                    </label>
+                    <input type="number" id="ars-input" min="100" max="500000" value="100" step="100"
+                           class="w-full p-2 border border-gray-300 rounded-md focus:ring-cook-green focus:border-cook-green text-lg font-mono text-gray-800">
+                    <p class="text-xs text-gray-500 mt-1">Costo promedio de comida delivery: **ARS 50.000**. El máximo de la escala '10' es ARS 150.000.</p>
+                </div>
+
+                <!-- Slider sincronizado -->
+                <input type="range" id="x3" min="1" max="10" value="1" step="0.1"
+                       class="w-full h-2 mt-2 bg-gray-200 rounded-lg appearance-none cursor-pointer range-lg slider-thumb slider-thumb-negative">
+                <div class="flex justify-between text-sm text-gray-500 mt-1">
+                    <span>1 (Muy poco dinero)</span>
+                    <span>10 (Dinero ilimitado)</span>
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- Resultados y Visualización -->
+        <div class="bg-gray-100 p-6 rounded-xl shadow-inner">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Resultado de la Decisión</h2>
+
+            <!-- Visualización de la Frontera -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-600 mb-2">Frontera de Decisión (Umbral 0)</h3>
+                <div id="visualization-bar" class="relative">
+                    <!-- Marcador de la línea de decisión (ya incluido en el CSS como ::before) -->
+                    <div id="visualization-pointer"></div>
+                    <div class="absolute inset-0 flex">
+                        <div class="flex-1 text-center text-sm font-semibold text-white flex items-center justify-center pointer-events-none opacity-80" style="background-color: var(--color-cook); border-top-left-radius: 0.5rem; border-bottom-left-radius: 0.5rem;">
+                            Cocinar en Casa (0)
+                        </div>
+                        <div class="flex-1 text-center text-sm font-semibold text-white flex items-center justify-center pointer-events-none opacity-80" style="background-color: var(--color-delivery); border-top-right-radius: 0.5rem; border-bottom-right-radius: 0.5rem;">
+                            Pedir Delivery (1)
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-between text-gray-500 text-sm mt-1">
+                    <span>Valores Negativos</span>
+                    <span>Valores Positivos</span>
+                </div>
+            </div>
+
+            <!-- Score y Decisión -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <div class="text-center p-4 bg-white rounded-lg shadow-md border border-gray-200">
+                    <p class="text-base text-gray-500 mb-1">Puntaje Neto (Suma Ponderada + Sesgo)</p>
+                    <div class="flex justify-center items-end">
+                        <span id="net-input-score" class="text-5xl font-extrabold text-gray-800">0.00</span>
+                        <span class="text-2xl text-gray-400 ml-2">Z</span>
+                    </div>
+                </div>
+
+                <div class="text-center p-4 rounded-lg shadow-md" id="decision-box">
+                    <p class="text-base text-white mb-1">Decisión del Perceptrón (Salida)</p>
+                    <span id="decision-text" class="text-4xl font-extrabold text-white">¡Cocinar en Casa! 🏠</span>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Definición de Parámetros del Perceptrón ---
+        const weights = {
+            x1: 0.30, // Fatiga (Peso Positivo)
+            x2: 0.35, // Urgencia/Hambre (Peso Positivo, más fuerte que fatiga)
+            x3: 0.7 // Dinero (Peso Negativo/Penaliza) // CORREGIDO: Se reemplazó el signo menos Unicode por el estándar ASCII.
+        };
+        const bias=-7.8; // Sesgo: Requiere un buen impulso para pedir Delivery
+
+        // --- Constantes de Escala ARS ---
+        const ARS_MIN_FOR_SCALE = 100; // Mínimo ARS para la escala (x3=1)
+        const ARS_MAX_FOR_SCALE = 150000; // Máximo ARS para la escala (x3=10)
+        const SCALE_RANGE = 9; // Max (10) - Min (1)
+
+        // --- Referencias a Elementos del DOM ---
+        const inputs = {
+            x1: document.getElementById('x1'),
+            x2: document.getElementById('x2'),
+            x3: document.getElementById('x3'), // Este es el slider (escala 1-10)
+        };
+        const values = {
+            x1: document.getElementById('x1-value'),
+            x2: document.getElementById('x2-value'),
+            x3: document.getElementById('x3-value'),
+        };
+        const arsInput = document.getElementById('ars-input'); // Nuevo campo ARS
+        
+        const netInputScore = document.getElementById('net-input-score');
+        const decisionText = document.getElementById('decision-text');
+        const decisionBox = document.getElementById('decision-box');
+        const visualizationPointer = document.getElementById('visualization-pointer');
+        const visualizationBar = document.getElementById('visualization-bar');
+
+
+        // --- Funciones de Sincronización ---
+
+        /**
+         * Convierte el monto en ARS a la escala Perceptrón (1.0 a 10.0) para X3.
+         * @param {number} arsValue - Monto en Pesos Argentinos.
+         * @returns {number} Valor escalado entre 1.0 y 10.0.
+         */
+        function arsToPerceptronScale(arsValue) {
+            const clampedArs = Math.min(Math.max(arsValue, ARS_MIN_FOR_SCALE), ARS_MAX_FOR_SCALE);
+            
+            const arsRange = ARS_MAX_FOR_SCALE - ARS_MIN_FOR_SCALE;
+            
+            // Posición normalizada (0 a 1)
+            const normalizedPosition = (clampedArs - ARS_MIN_FOR_SCALE) / arsRange;
+            
+            // Escala Perceptrón (1 a 10)
+            return 1.0 + (normalizedPosition * SCALE_RANGE);
+        }
+
+        /**
+         * Convierte la escala Perceptrón (1.0 a 10.0) a un monto en ARS.
+         * @param {number} scaleValue - Valor escalado entre 1.0 y 10.0.
+         * @returns {number} Monto en Pesos Argentinos (ARS).
+         */
+        function perceptronScaleToArs(scaleValue) {
+            // Posición normalizada (0 a 1)
+            const normalizedPosition = (scaleValue - 1.0) / SCALE_RANGE;
+            
+            const arsRange = ARS_MAX_FOR_SCALE - ARS_MIN_FOR_SCALE;
+            
+            // Monto en ARS
+            const arsValue = ARS_MIN_FOR_SCALE + (normalizedPosition * arsRange);
+            
+            return Math.round(arsValue / 100) * 100; // Redondea al 100 más cercano
+        }
+
+
+        // --- Función Principal de Cálculo y Actualización ---
+        function updatePerceptron() {
+            // 1. Obtener valores de entrada (normalizados a ser el valor exacto 1-10)
+            const x1 = parseFloat(inputs.x1.value);
+            const x2 = parseFloat(inputs.x2.value);
+            const x3 = parseFloat(inputs.x3.value); // Valor de la escala Perceptrón (1-10)
+
+            // Actualizar el texto de los valores (con un decimal)
+            values.x1.textContent = x1.toFixed(1);
+            values.x2.textContent = x2.toFixed(1);
+            values.x3.textContent = x3.toFixed(1);
+            
+            // 2. Calcular el Puntaje Neto (Net Input)
+            // Z = (x1 * w1) + (x2 * w2) + (x3 * w3) + bias
+            const netInput = (x1 * weights.x1) + (x2 * weights.x2) + (x3 * weights.x3) + bias;
+            
+            // 3. Aplicar la Función de Activación (Step Function)
+            let decisionLabel;
+            let colorClass;
+
+            if (netInput >= 0) {
+                // Resultado 1: Delivery (Lado Positivo)
+                decisionLabel = "¡Pide Delivery! 🛵";
+                colorClass = 'bg-delivery-red';
+            } else {
+                // Resultado 0: Cocinar (Lado Negativo)
+                decisionLabel = "¡Cocinar en Casa! 🏠";
+                colorClass = 'bg-cook-green';
+            }
+
+            // --- Actualizar UI ---
+            
+            // 1. Actualizar Score
+            netInputScore.textContent = netInput.toFixed(2);
+            netInputScore.style.color = (netInput >= 0) ? 'var(--color-delivery)' : 'var(--color-cook)';
+
+            // 2. Actualizar Decisión
+            decisionText.textContent = decisionLabel;
+            
+            // Resetear y aplicar nueva clase de color al contenedor
+            decisionBox.className = 'text-center p-4 rounded-lg shadow-md transition-colors duration-500';
+            decisionBox.classList.add(colorClass);
+
+            // 3. Actualizar Visualización de la Frontera
+            
+            // Rango de valores (Ajustado tras incluir X3 en la fórmula)
+            const MIN_Z = -8.0; 
+            const MAX_Z = 8.5;
+            
+            // Normalizar el puntaje (Z) a una posición porcentual (0% a 100%)
+            let normalizedPosition = (netInput - MIN_Z) / (MAX_Z - MIN_Z);
+            
+            // Limitar la posición al rango [0, 1]
+            normalizedPosition = Math.max(0, Math.min(1, normalizedPosition));
+            
+            const positionPercent = normalizedPosition * 100;
+            
+            // Mover el puntero
+            visualizationPointer.style.left = `${positionPercent}%`;
+            
+            // Cambiar color de fondo de la barra principal para reflejar la decisión actual
+            visualizationBar.style.backgroundColor = (netInput >= 0) ? 'var(--color-delivery)' : 'var(--color-cook)';
+            
+            // Opcional: Animar el color del puntero para distinguirlo
+            visualizationPointer.style.backgroundColor = (netInput >= 0) ? 'var(--color-delivery)' : 'var(--color-cook)';
+        }
+
+        // --- Event Listener para Sincronizar ARS con Slider ---
+
+        /** Maneja el cambio del input ARS: actualiza el slider y dispara el cálculo. */
+        function handleArsInput() {
+            const arsValue = parseFloat(arsInput.value);
+            if (isNaN(arsValue)) return;
+
+            // 1. Convertir ARS a escala Perceptrón (1-10)
+            const newScaleValue = arsToPerceptronScale(arsValue);
+            
+            // 2. Aplicar el valor al slider (esto dispara el evento 'input' del slider)
+            inputs.x3.value = newScaleValue.toFixed(1);
+
+            // 3. Llamar manualmente a updatePerceptron por si el navegador no dispara el evento 'input'
+            updatePerceptron();
+        }
+
+        /** Maneja el cambio del slider: actualiza el input ARS y dispara el cálculo. */
+        function handleSliderInput() {
+            const scaleValue = parseFloat(inputs.x3.value);
+            
+            // 1. Convertir escala Perceptrón (1-10) a ARS
+            const newArsValue = perceptronScaleToArs(scaleValue);
+
+            // 2. Aplicar el valor al input ARS
+            arsInput.value = newArsValue;
+            
+            // 3. Disparar el cálculo principal
+            updatePerceptron();
+        }
+
+
+        // --- Asignar Event Listeners ---
+        // Sliders X1 y X2 (solo llaman a updatePerceptron)
+        inputs.x1.addEventListener('input', updatePerceptron);
+        inputs.x2.addEventListener('input', updatePerceptron);
+
+        // Input ARS y Slider X3 (sincronizados)
+        arsInput.addEventListener('input', handleArsInput);
+        inputs.x3.addEventListener('input', handleSliderInput);
+        
+        // Ejecutar al cargar la página para inicializar la UI
+        document.addEventListener('DOMContentLoaded', () => {
+             // Inicializar la UI con los valores predeterminados (x3=1 y ars=100)
+             arsInput.value = perceptronScaleToArs(1); // Asegura que el ARS inicie en el valor mínimo mapeado
+             updatePerceptron();
+        });
+
+    </script>
+</body>
+</html>
