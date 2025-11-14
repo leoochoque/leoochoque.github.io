@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Multijugador Online</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Carga de la fuente Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Estilos personalizados */
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Evitar scroll */
+        }
+        canvas {
+            background-color: #0c0a09; /* stone-950 */
+            border: 2px solid #57534e; /* stone-600 */
+            border-radius: 0.5rem; /* rounded-lg */
+        }
+        /* Estilo para la cabeza de la serpiente */
+        .snake-head {
+            background-color: #f87171; /* red-400 */
+        }
+        /* Estilo para el cuerpo de la serpiente */
+        .snake-body {
+            background-color: #a3e635; /* lime-400 */
+        }
+        /* Estilo para la comida */
+        .food {
+            background-color: #60a5fa; /* blue-400 */
+        }
+    </style>
+</head>
+<body class="bg-stone-900 text-stone-200 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <h1 class="text-3xl font-bold mb-2 text-lime-400">Snake Multijugador Online</h1>
+    
+    <div class="mb-2 text-center">
+        <p>Tu ID de Jugador: <span id="userIdDisplay" class="font-mono bg-stone-700 px-2 py-1 rounded">Cargando...</span></p>
+        <p class="text-xl">Puntuación: <span id="scoreDisplay" class="font-bold text-lime-400">0</span></p>
+    </div>
+
+    <!-- Contenedor del juego -->
+    <div class="relative">
+        <canvas id="gameCanvas" width="500" height="500"></canvas>
+        
+        <!-- Mensaje de Game Over -->
+        <div id="gameOver" class="hidden absolute inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center rounded-lg">
+            <h2 class="text-4xl font-bold text-red-500 mb-4">¡Has Perdido!</h2>
+            <button id="playAgain" class="bg-lime-500 hover:bg-lime-600 text-stone-900 font-bold py-2 px-6 rounded-lg text-xl transition-colors">
+                Jugar de Nuevo
+            </button>
+        </div>
+    </div>
+    
+    <p class="mt-4 text-sm text-stone-400">Usa las teclas de flecha para moverte.</p>
+
+    <!-- SDK de Firebase -->
+    <script type="module">
+        // Importaciones de Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            deleteDoc, 
+            onSnapshot, 
+            collection,
+            serverTimestamp,
+            setLogLevel,
+            writeBatch
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Configuración de Firebase ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-snake-app';
+        let firebaseConfig;
+        try {
+            firebaseConfig = JSON.parse(__firebase_config);
+        } catch (e) {
+            console.error("Error al parsear la configuración de Firebase. Usando valores por defecto.", e);
+            // Configuración de reemplazo MUY básica (solo para evitar que se rompa)
+            firebaseConfig = { apiKey: "DEFAULT_KEY", authDomain: "DEFAULT_DOMAIN", projectId: "DEFAULT_PROJECT" };
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        setLogLevel('Debug'); // Habilitar logs de Firestore
+
+        // --- Constantes del Juego ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const GRID_SIZE = 25; // 25x25 celdas
+        const CELL_SIZE = canvas.width / GRID_SIZE; // 500 / 25 = 20px
+        const GAME_SPEED_MS = 150; // Velocidad del juego (ms por tick)
+
+        // --- Elementos del DOM ---
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const gameOverDisplay = document.getElementById('gameOver');
+        const playAgainButton = document.getElementById('playAgain');
+
+        // --- Estado del Juego (Local) ---
+        let myUserId = null;
+        let players = {}; // Caché local de todos los jugadores de Firestore
+        let food = {}; // Caché local de la comida
+        let myDirection = 'right'; // Dirección actual de *mi* serpiente
+        let nextDirection = 'right'; // Siguiente dirección (para evitar giros de 180°)
+        let gameInterval = null;
+        let isGameOver = false;
+        let unsubscribePlayers = null; // Función para cancelar la suscripción de jugadores
+        let unsubscribeFood = null; // Función para cancelar la suscripción de comida
+
+        // --- Referencias de Firestore ---
+        // Usamos datos públicos para que todos puedan unirse
+        const publicDataRef = `/artifacts/${appId}/public/data`;
+        const playersCollectionRef = collection(db, `${publicDataRef}/snake_players`);
+        const foodDocRef = doc(db, `${publicDataRef}/snake_game/food`);
+        
+        // --- Autenticación ---
+        async function setupAuth() {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    console.log("Usuario autenticado:", user.uid);
+                    myUserId = user.uid;
+                    userIdDisplay.textContent = myUserId;
+                    // Iniciar el juego una vez autenticado
+                    initGame();
+                } else {
+                    console.log("Usuario no autenticado, iniciando sesión...");
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined') {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Error al iniciar sesión:", error);
+                    }
+                }
+            });
+        }
+
+        // --- Inicialización del Juego ---
+        async function initGame() {
+            console.log("Iniciando juego...");
+            if (!myUserId) {
+                console.error("No hay ID de usuario, no se puede iniciar el juego.");
+                return;
+            }
+
+            // Limpiar estado anterior
+            if (gameInterval) clearInterval(gameInterval);
+            isGameOver = false;
+            gameOverDisplay.classList.add('hidden');
+            
+            myDirection = 'right';
+            nextDirection = 'right';
+            
+            // Posición inicial aleatoria
+            const startX = Math.floor(Math.random() * GRID_SIZE);
+            const startY = Math.floor(Math.random() * GRID_SIZE);
+            const myInitialSnake = [{ x: startX, y: startY }];
+            // Color aleatorio
+            const myColor = `hsl(${Math.random() * 360}, 100%, 75%)`;
+
+            // Crear/actualizar mi documento de jugador en Firestore
+            const myPlayerDocRef = doc(playersCollectionRef, myUserId);
+            try {
+                await setDoc(myPlayerDocRef, {
+                    snake: myInitialSnake,
+                    score: 0,
+                    color: myColor,
+                    lastSeen: serverTimestamp() // Para limpiar jugadores inactivos (no implementado aquí)
+                });
+                console.log("Documento de jugador creado/actualizado.");
+            } catch (e) {
+                console.error("Error al crear documento de jugador:", e);
+                return;
+            }
+
+            // Iniciar listeners de Firestore
+            startListeners();
+
+            // Colocar comida (si no existe)
+            // Pequeña demora para asegurar que el listener de comida se active primero
+            setTimeout(async () => {
+                if (!food.x) {
+                    console.log("No hay comida, creando una nueva.");
+                    await placeFood();
+                }
+            }, 500);
+
+
+            // Iniciar bucles de juego y renderizado
+            gameInterval = setInterval(gameLoop, GAME_SPEED_MS);
+            requestAnimationFrame(renderLoop);
+        }
+
+        // --- Listeners de Firestore ---
+        function startListeners() {
+            // Cancelar listeners anteriores si existen
+            if (unsubscribePlayers) unsubscribePlayers();
+            if (unsubscribeFood) unsubscribeFood();
+
+            // Listener para la colección de jugadores
+            unsubscribePlayers = onSnapshot(playersCollectionRef, (snapshot) => {
+                const newPlayers = {};
+                snapshot.forEach((doc) => {
+                    newPlayers[doc.id] = doc.data();
+                });
+                players = newPlayers;
+                
+                // Actualizar puntuación local
+                if (players[myUserId]) {
+                    scoreDisplay.textContent = players[myUserId].score;
+                } else if (!isGameOver) {
+                    // Fui eliminado por otro medio (ej. inactividad), terminar juego
+                    console.log("Mi jugador ya no existe en Firestore. Terminando juego.");
+                    handleGameOver(false); // No borrar el doc, ya no existe
+                }
+            });
+
+            // Listener para el documento de comida
+            unsubscribeFood = onSnapshot(foodDocRef, (doc) => {
+                if (doc.exists()) {
+                    food = doc.data();
+                } else {
+                    console.log("Documento de comida no existe. Intentando crear...");
+                    // Si no hay comida, cualquier jugador puede crearla
+                    // Se usa un try/catch para manejar la "carrera" (varios intentando crear)
+                    placeFood().catch(e => console.warn("Carrera al crear comida, ignorando."));
+                }
+            });
+        }
+
+        // --- Colocar Comida ---
+        async function placeFood() {
+            let newFoodPos = { x: 0, y: 0 };
+            let onSnake = true;
+
+            // Buscar una posición que no esté ocupada por ninguna serpiente
+            while (onSnake) {
+                newFoodPos = {
+                    x: Math.floor(Math.random() * GRID_SIZE),
+                    y: Math.floor(Math.random() * GRID_SIZE)
+                };
+                onSnake = false; // Asumir que es seguro
+                
+                // Revisar todas las serpientes
+                for (const playerId in players) {
+                    if (players[playerId].snake.some(segment => segment.x === newFoodPos.x && segment.y === newFoodPos.y)) {
+                        onSnake = true; // Ops, está en una serpiente
+                        break;
+                    }
+                }
+            }
+            
+            // Escribir la nueva posición de la comida en Firestore
+            try {
+                await setDoc(foodDocRef, newFoodPos);
+                console.log("Nueva comida colocada en:", newFoodPos);
+            } catch (e) {
+                console.error("Error al colocar comida:", e);
+            }
+        }
+
+        // --- Bucle Principal del Juego (Lógica) ---
+        async function gameLoop() {
+            if (isGameOver || !myUserId || !players[myUserId]) {
+                return;
+            }
+
+            // Copia local de mi estado actual (desde el caché de Firestore)
+            let myPlayer = players[myUserId];
+            let localSnake = [...myPlayer.snake];
+            let localScore = myPlayer.score;
+            
+            // Actualizar dirección
+            myDirection = nextDirection;
+
+            // Calcular nueva cabeza
+            let head = { ...localSnake[0] }; // Copia de la cabeza actual
+            if (myDirection === 'right') head.x++;
+            if (myDirection === 'left') head.x--;
+            if (myDirection === 'up') head.y--;
+            if (myDirection === 'down') head.y++;
+
+            // --- Detección de Colisiones ---
+            // 1. Colisión con paredes
+            if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
+                console.log("Colisión con pared");
+                handleGameOver();
+                return;
+            }
+
+            // 2. Colisión consigo mismo
+            if (localSnake.some(segment => segment.x === head.x && segment.y === head.y)) {
+                console.log("Colisión consigo mismo");
+                handleGameOver();
+                return;
+            }
+
+            // 3. Colisión con otros jugadores
+            for (const playerId in players) {
+                if (playerId === myUserId) continue; // No chequear contra mí mismo
+                const otherSnake = players[playerId].snake;
+                if (otherSnake.some(segment => segment.x === head.x && segment.y === head.y)) {
+                    console.log(`Colisión con jugador ${playerId}`);
+                    handleGameOver();
+                    return;
+                }
+            }
+
+            // --- Movimiento y Comida ---
+            localSnake.unshift(head); // Añadir nueva cabeza
+
+            // Comprobar si comió la comida
+            if (head.x === food.x && head.y === food.y) {
+                localScore++; // Aumentar puntuación
+                // No quitamos la cola (la serpiente crece)
+                
+                // Colocar nueva comida (asíncrono)
+                placeFood(); 
+            } else {
+                localSnake.pop(); // Quitar la cola (la serpiente se mueve)
+            }
+
+            // --- Actualizar Firestore ---
+            // Escribir el nuevo estado de *mi* serpiente en Firestore
+            try {
+                const myPlayerDocRef = doc(playersCollectionRef, myUserId);
+                await setDoc(myPlayerDocRef, { 
+                    ...myPlayer, // Reutilizar color, etc.
+                    snake: localSnake, 
+                    score: localScore,
+                    lastSeen: serverTimestamp()
+                }, { merge: true }); // Usar merge por si acaso
+            } catch (e) {
+                console.error("Error al actualizar estado del jugador:", e);
+            }
+        }
+
+        // --- Bucle de Renderizado (Dibujo) ---
+        function renderLoop() {
+            if (isGameOver) {
+                return; // Detener el bucle de renderizado
+            }
+
+            // Limpiar canvas
+            ctx.fillStyle = '#0c0a09'; // stone-950
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar comida
+            if (food.x !== undefined) {
+                ctx.fillStyle = '#60a5fa'; // blue-400
+                ctx.fillRect(food.x * CELL_SIZE, food.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                ctx.strokeStyle = '#3b82f6'; // blue-500
+                ctx.strokeRect(food.x * CELL_SIZE, food.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
+
+            // Dibujar todas las serpientes
+            for (const playerId in players) {
+                const player = players[playerId];
+                const snake = player.snake;
+                const color = player.color || '#a3e635';
+
+                snake.forEach((segment, index) => {
+                    ctx.fillStyle = (index === 0) ? lightenColor(color, 25) : color; // Cabeza más clara
+                    ctx.fillRect(segment.x * CELL_SIZE, segment.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    
+                    // Borde más oscuro
+                    ctx.strokeStyle = darkenColor(color, 25);
+                    ctx.strokeRect(segment.x * CELL_SIZE, segment.y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                });
+            }
+
+            // Solicitar el siguiente frame
+            requestAnimationFrame(renderLoop);
+        }
+
+        // --- Manejo de Game Over ---
+        async function handleGameOver(deleteMyDoc = true) {
+            console.log("¡Juego terminado!");
+            isGameOver = true;
+            clearInterval(gameInterval);
+            gameOverDisplay.classList.remove('hidden');
+
+            // Cancelar suscripciones
+            if (unsubscribePlayers) {
+                unsubscribePlayers();
+                unsubscribePlayers = null;
+            }
+            if (unsubscribeFood) {
+                unsubscribeFood();
+                unsubscribeFood = null;
+            }
+
+            // Borrar mi documento de jugador de Firestore
+            if (deleteMyDoc && myUserId) {
+                try {
+                    await deleteDoc(doc(playersCollectionRef, myUserId));
+                    console.log("Documento de jugador eliminado.");
+                } catch (e) {
+                    console.error("Error al eliminar documento de jugador:", e);
+                }
+            }
+        }
+
+        // --- Control de Teclado ---
+        document.addEventListener('keydown', e => {
+            switch (e.key) {
+                case 'ArrowUp':
+                    if (myDirection !== 'down') nextDirection = 'up';
+                    break;
+                case 'ArrowDown':
+                    if (myDirection !== 'up') nextDirection = 'down';
+                    break;
+                case 'ArrowLeft':
+                    if (myDirection !== 'right') nextDirection = 'left';
+                    break;
+                case 'ArrowRight':
+                    if (myDirection !== 'left') nextDirection = 'right';
+                    break;
+            }
+        });
+
+        // --- Botón de Jugar de Nuevo ---
+        playAgainButton.addEventListener('click', () => {
+            console.log("Botón 'Jugar de Nuevo' presionado.");
+            initGame();
+        });
+
+        // --- Funciones de Utilidad (Color) ---
+        function lightenColor(hsl, percent) {
+            const [h, s, l] = hsl.match(/\d+/g).map(Number);
+            const newL = Math.min(100, l + percent);
+            return `hsl(${h}, ${s}%, ${newL}%)`;
+        }
+
+        function darkenColor(hsl, percent) {
+            const [h, s, l] = hsl.match(/\d+/g).map(Number);
+            const newL = Math.max(0, l - percent);
+            return `hsl(${h}, ${s}%, ${newL}%)`;
+        }
+        
+        // --- Iniciar la autenticación al cargar la página ---
+        window.addEventListener('load', setupAuth);
+
+    </script>
+</body>
+</html>
