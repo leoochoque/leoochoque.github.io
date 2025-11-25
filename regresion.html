@@ -4,12 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Regresión Lineal: Predictor de Éxito</title>
+    <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fuente Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; color: #1f2937; }
-        #dataChart { background-color: #ffffff; border: 2px solid #e5e7eb; cursor: crosshair; }
-        .data-input { width: 100%; height: 2.5rem; background-color: #e0f2f7; border-radius: 0.5rem; cursor: pointer; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc;
+            color: #1f2937;
+        }
+        #dataChart {
+            background-color: #ffffff;
+            border: 2px solid #e5e7eb;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            cursor: crosshair; /* Cursor para indicar interactividad */
+        }
+        .data-input {
+            width: 100%;
+            height: 2.5rem;
+            background-color: #e0f2f7;
+            border-radius: 0.5rem;
+            appearance: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 flex items-center justify-center">
@@ -17,238 +35,505 @@
     <div id="appContainer" class="w-full max-w-4xl bg-white rounded-xl shadow-2xl p-6 md:p-10 border border-gray-100">
         
         <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-sky-700">Data Mining: Regresión Lineal</h1>
-            <p class="text-gray-500 mt-2">Versión Web Estática - Estudio vs. Éxito</p>
+            <h1 class="text-3xl md:text-4xl font-extrabold text-sky-700">
+                Data Mining
+            </h1>
+	    <h1 class="text-3xl md:text-4xl font-extrabold text-sky-700">
+                Regresión Lineal (Estudio vs. Éxito)
+            </h1>
+            <p class="text-gray-500 mt-2">
+                Usamos datos reales para predecir un resultado.
+            </p>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Columna de Entrada de Datos -->
             <div class="p-4 bg-sky-50 rounded-lg">
-                <h2 class="text-xl font-bold mb-4 text-sky-600">1. Tus Datos</h2>
+                <h2 class="text-xl font-bold mb-4 text-sky-600">1. Ingreso de datos para entrenamiento</h2>
                 <form id="dataForm" class="space-y-4">
+                    
+                    <!-- Campo de Nombre -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Tu Nombre:</label>
-                        <input type="text" id="userName" required placeholder="Tu nombre" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                        <label for="userName" class="block text-sm font-medium text-gray-700">
+                            Tu Nombre:
+                        </label>
+                        <input type="text" id="userName" name="userName" placeholder="Ej: Sofía o Juan" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 text-lg focus:ring-sky-500 focus:border-sky-500">
                     </div>
+
+                    <!-- Horas de Estudio (Variable X) -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Horas de Estudio (0-40):</label>
-                        <input type="range" id="studyHours" min="0" max="40" step="1" value="20" class="data-input bg-sky-200" oninput="document.getElementById('studyValue').innerText = this.value;">
+                        <label for="studyHours" class="block text-sm font-medium text-gray-700">
+                            Horas de Estudio Semanales (0 - 40):
+                        </label>
+                        <p class="text-xs text-gray-500 mb-1">
+                            (Variable X: Variable Predictora)
+                        </p>
+                        <input type="range" id="studyHours" name="studyHours" min="0" max="40" step="1" value="20" 
+                                class="data-input bg-sky-200" oninput="document.getElementById('studyValue').innerText = this.value;">
                         <span id="studyValue" class="text-lg font-semibold text-sky-700">20</span>
                     </div>
+
+                    <!-- Satisfacción Real (Variable Y) -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Nivel de Éxito REAL (0-10):</label>
-                        <input type="range" id="successScore" min="0" max="10" step="0.5" value="5.0" class="data-input bg-sky-400" oninput="document.getElementById('successValue').innerText = this.value;">
+                        <label for="successScore" class="block text-sm font-medium text-gray-700">
+                            Tu Nivel de Éxito REAL (0 - 10):
+                        </label>
+                        <p class="text-xs text-gray-500 mb-1">
+                            (Variable Y: El valor que el modelo intenta predecir, usado para "entrenar".)
+                        </p>
+                        <input type="range" id="successScore" name="successScore" min="0" max="10" step="0.5" value="5.0" 
+                                class="data-input bg-sky-400" oninput="document.getElementById('successValue').innerText = this.value;">
                         <span id="successValue" class="text-lg font-semibold text-sky-700">5.0</span>
                     </div>
-                    <button type="submit" id="submitBtn" class="w-full py-3 px-4 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-700 shadow-md transition">Entrenar Modelo</button>
+
+
+                    <button type="submit" id="submitBtn" 
+                            class="w-full py-3 px-4 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-700 transition duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-sky-500 focus:ring-opacity-50">
+                        Entrenar modelo
+                    </button>
                 </form>
-                <div id="resultBox" class="mt-6 p-4 bg-white border border-sky-300 rounded-lg hidden">
-                    <h3 class="font-bold text-sky-800">Resultado:</h3>
+
+                <div id="resultBox" class="mt-6 p-4 bg-white border border-sky-300 rounded-lg shadow-inner hidden">
+                    <h3 class="text-lg font-bold text-sky-800">Datos enviados</h3>
                     <p id="predictionResult" class="text-2xl mt-1 font-extrabold"></p>
+                    <p id="lineEquation" class="text-sm mt-2 text-gray-600"></p>
+		<!--
+                    <p class="text-sm text-gray-500 mt-2">
+                        Dato enviado.
+                    </p>
+		-->
                 </div>
-                <p id="loadingMessage" class="mt-4 text-center text-sky-600 text-sm">Conectando con base de datos...</p>
+                
+                <p id="loadingMessage" class="mt-4 text-center text-sky-600 font-semibold hidden">
+                    Cargando datos y calculando el modelo de regresión...
+                </p>
+
+                <p id="userIdDisplay" class="mt-4 text-xs text-gray-400 break-all">ID de Usuario: </p>
             </div>
 
+            <!-- Columna de Visualización y Explicación -->
             <div class="p-4 bg-white rounded-lg border border-gray-200">
-                <h2 class="text-xl font-bold mb-4 text-sky-600">2. Gráfico en Tiempo Real</h2>
+                <h2 class="text-xl font-bold mb-4 text-sky-600">2. Visualización de la Regresión</h2>
+                
                 <canvas id="dataChart" width="400" height="400" class="w-full h-auto rounded-lg"></canvas>
-                <p id="lineEquation" class="text-center text-sm mt-2 text-gray-500 font-mono"></p>
+                
+                <h3 class="text-lg font-bold mt-4 text-sky-800">Explicación del Modelo (y = mx + b):</h3>
+                <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                    <li><b>Puntos:</b> Muestran la relación entre Horas de Estudio y Éxito.</li>
+                    <li><b>Línea Azul:</b> Es el modelo matemático que mejor se ajusta a los datos.</li>
+                    <li><b>Interactividad:</b> Pasa el mouse sobre los puntos para ver detalles.</li>
+                </ul>
             </div>
         </div>
 
-        <div class="mt-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
-            <h2 class="text-xl font-bold mb-4 text-sky-600">3. Predicción (Prueba el modelo)</h2>
+        <!-- ================================================== -->
+        <!-- NUEVA SECCIÓN DE PREDICCIÓN EN VIVO -->
+        <!-- ================================================== -->
+        <div id="predictionSection" class="mt-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+            <h2 class="text-xl font-bold mb-4 text-sky-600">3. Prueba el Modelo Entrenado (Predicción en Vivo)</h2>
+            <p class="text-sm text-gray-600 mb-4">
+                Usa el deslizador para ingresar un valor de "Horas de Estudio" (X) y mira qué "Nivel de Éxito" (Y) predice el modelo actual (la línea azul).
+            </p>
             <div class="flex flex-col md:flex-row gap-4 items-center">
+                <!-- Slider de Predicción -->
                 <div class="flex-grow w-full">
-                    <label class="block text-sm font-medium text-gray-700">Horas (X) para predecir:</label>
-                    <input type="range" id="predictHours" min="0" max="40" step="1" value="20" class="data-input bg-green-200" oninput="document.getElementById('predictValueDisplay').innerText = this.value;">
+                    <label for="predictHours" class="block text-sm font-medium text-gray-700">
+                        Horas de Estudio (X) para Predecir (0-40):
+                    </label>
+                    <input type="range" id="predictHours" name="predictHours" min="0" max="40" step="1" value="20" 
+                           class="data-input bg-green-200" oninput="document.getElementById('predictValueDisplay').innerText = this.value;">
                     <span id="predictValueDisplay" class="text-lg font-semibold text-sky-700">20</span>
                 </div>
-                <button id="predictBtn" class="py-3 px-6 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 shadow-md">Predecir</button>
+                
+                <!-- Botón de Predicción -->
+                <button id="predictBtn" class="py-3 px-6 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-300 shadow-md">
+                    Predecir
+                </button>
             </div>
-            <p id="predictionText" class="mt-4 text-2xl font-extrabold text-green-700 text-center"></p>
+            
+            <!-- Resultado de la Predicción -->
+            <div id="predictionResultBox" class="mt-4 p-4 bg-white border border-green-300 rounded-lg shadow-inner hidden">
+                <p class="text-2xl font-extrabold text-green-700" id="predictionText"></p>
+            </div>
         </div>
+
     </div>
 
-    <!-- SDKs de Firebase -->
+    <!-- Firebase SDKs -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==================================================================
-        // CONFIGURACIÓN DE FIREBASE
+        // CONFIGURACIÓN DE FIREBASE (¡PEGA TUS DATOS AQUÍ!)
         // ==================================================================
-        const firebaseConfig = {
-          apiKey: "AIzaSyDioLs_q_WyFhPmXdwuqYs9fxMRg5rbAc4",
-          authDomain: "regresion-lineal-48e35.firebaseapp.com",
-          projectId: "regresion-lineal-48e35",
-          storageBucket: "regresion-lineal-48e35.firebasestorage.app",
-          messagingSenderId: "554331462950",
-          appId: "1:554331462950:web:339f5145eed59fb7c475e7"
-        };
+        // Copia esto desde tu consola de Firebase: Project Settings -> General -> Your apps -> SDK setup/config
+	const firebaseConfig = {
+  		apiKey: "AIzaSyDioLs_q_WyFhPmXdwuqYs9fxMRg5rbAc4",
+  		authDomain: "regresion-lineal-48e35.firebaseapp.com",
+  		projectId: "regresion-lineal-48e35",
+  		storageBucket: "regresion-lineal-48e35.firebasestorage.app",
+  		messagingSenderId: "554331462950",
+  		appId: "1:554331462950:web:339f5145eed59fb7c475e7"
+	};
+
         // ==================================================================
 
-        // Inicialización
-        let app, db, auth, userId;
-        try {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            signInAnonymously(auth).catch(e => console.error("Error Auth:", e));
-            
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    userId = user.uid;
-                    setupDataListener();
-                }
-            });
-        } catch (e) {
-            document.getElementById('loadingMessage').innerText = "Error: Configura Firebase en el código.";
-            console.error("Falta configuración Firebase", e);
-        }
-
-        // Variables Globales
+        let db, auth, userId;
         let allDataPoints = [];
         let regressionLine = { m: 0.2, b: 2 }; 
+        setLogLevel('error'); 
+
+        // Almacena las coordenadas de los puntos dibujados para detección de hover
+        let drawnPointsCoordinates = []; 
+        let hoveredDataPoint = null;
+
+        // Initial Seed Data
         const seedData = [
-            { x: 4, y: 2.5, isSeed: true }, { x: 14, y: 4.0, isSeed: true },
-            { x: 24, y: 7.2, isSeed: true }, { x: 38, y: 8.8, isSeed: true }, { x: 2, y: 1.0, isSeed: true }
+            { x: 4.0, y: 2.5, isSeed: true }, 
+            { x: 14.0, y: 4.0, isSeed: true }, 
+            { x: 24.0, y: 7.2, isSeed: true }, 
+            { x: 38.0, y: 8.8, isSeed: true }, 
+            { x: 2.0, y: 1.0, isSeed: true },
         ];
 
-        // Lógica de Regresión
+        // ==========================================================
+        // LINEAR REGRESSION ALGORITHM
+        // ==========================================================
         function calculateRegression(data) {
-            if (data.length < 2) return { m: 0, b: 5 };
-            const n = data.length;
-            const sumX = data.reduce((s, p) => s + p.x, 0); 
-            const sumY = data.reduce((s, p) => s + p.y, 0); 
-            const meanX = sumX / n; const meanY = sumY / n;
-            let num = 0, den = 0;
-            for (const p of data) {
-                const dx = p.x - meanX; const dy = p.y - meanY;
-                num += dx * dy; den += dx * dx;
+            if (data.length < 2) {
+                return { m: 0, b: data.length > 0 ? data[0].y : 5 }; 
             }
-            const m = den !== 0 ? num / den : 0;
-            return { m: m, b: meanY - m * meanX };
-        }
+            const n = data.length;
+            const sumX = data.reduce((sum, point) => sum + point.x, 0); 
+            const sumY = data.reduce((sum, point) => sum + point.y, 0); 
+            const meanX = sumX / n;
+            const meanY = sumY / n;
 
-        // Canvas y Dibujo
+            let numerator = 0; 
+            let denominator = 0; 
+
+            for (const point of data) {
+                const diffX = point.x - meanX;
+                const diffY = point.y - meanY;
+                numerator += diffX * diffY;
+                denominator += diffX * diffX;
+            }
+
+            const m = denominator !== 0 ? numerator / denominator : 0;
+            const b = meanY - m * meanX;
+
+            return { m: m, b: b };
+        }
+        
+        // ==========================================================
+        // CANVAS INTERACTIVITY & DRAWING
+        // ==========================================================
         const canvas = document.getElementById('dataChart');
         const ctx = canvas.getContext('2d');
-        const C_SIZE = 400, PAD = 40, CHART_AREA = C_SIZE - 2 * PAD;
-        let drawnPoints = [], hoveredPoint = null;
+        const CHART_SIZE = 400;
+        const PADDING = 40;
+        const MAX_X = 40; 
+        const MAX_Y = 10; 
+        const CHART_AREA = CHART_SIZE - 2 * PADDING;
 
+        // Detección del mouse para Hover
         canvas.addEventListener('mousemove', (e) => {
-            const r = canvas.getBoundingClientRect();
-            const mx = (e.clientX - r.left) * (canvas.width / r.width);
-            const my = (e.clientY - r.top) * (canvas.height / r.height);
+            const rect = canvas.getBoundingClientRect();
+            // Escalar coordenadas del mouse al tamaño interno del canvas
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+
             let found = null;
-            for (let i = drawnPoints.length - 1; i >= 0; i--) {
-                const p = drawnPoints[i];
-                if ((mx-p.cx)**2 + (my-p.cy)**2 < 64) { found = p.data; break; }
+            // Buscar si el mouse está cerca de algún punto dibujado
+            // Iteramos al revés para encontrar el punto "de arriba" si hay superposición
+            for (let i = drawnPointsCoordinates.length - 1; i >= 0; i--) {
+                const p = drawnPointsCoordinates[i];
+                // Distancia euclidiana simple
+                const dx = mouseX - p.cx;
+                const dy = mouseY - p.cy;
+                // Radio de detección: 8px
+                if (dx*dx + dy*dy < 64) { 
+                    found = p.data;
+                    break;
+                }
             }
-            if (found !== hoveredPoint) { hoveredPoint = found; drawChart(allDataPoints, regressionLine); }
+
+            if (found !== hoveredDataPoint) {
+                hoveredDataPoint = found;
+                drawChart(allDataPoints, regressionLine); // Redibujar con el tooltip
+            }
         });
-        canvas.addEventListener('mouseleave', () => { hoveredPoint = null; drawChart(allDataPoints, regressionLine); });
 
-        function drawChart(data, line) {
-            ctx.clearRect(0, 0, C_SIZE, C_SIZE);
-            drawnPoints = []; const labels = [];
-            const mapX = v => PAD + (v / 40) * CHART_AREA;
-            const mapY = v => C_SIZE - PAD - (v / 10) * CHART_AREA;
+        // Limpiar tooltip al salir
+        canvas.addEventListener('mouseleave', () => {
+            if (hoveredDataPoint) {
+                hoveredDataPoint = null;
+                drawChart(allDataPoints, regressionLine);
+            }
+        });
 
-            // Ejes
-            ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = 2; ctx.beginPath();
-            ctx.moveTo(PAD, C_SIZE - PAD); ctx.lineTo(C_SIZE - PAD, C_SIZE - PAD);
-            ctx.moveTo(PAD, C_SIZE - PAD); ctx.lineTo(PAD, PAD); ctx.stroke();
+        function drawChart(dataPoints, line) {
+            ctx.clearRect(0, 0, CHART_SIZE, CHART_SIZE);
+            drawnPointsCoordinates = []; // Resetear coordenadas
+            const placedLabels = []; // Para detectar colisiones de texto
 
-            // Texto Ejes
-            ctx.fillStyle = '#4b5563'; ctx.font = '12px Inter';
-            ctx.fillText('0', PAD-15, C_SIZE-PAD+15); ctx.fillText('40', C_SIZE-PAD, C_SIZE-PAD+15); ctx.fillText('10', PAD-25, PAD+5);
+            const mapToX = (value) => PADDING + (value / MAX_X) * CHART_AREA;
+            const mapToY = (value) => CHART_SIZE - PADDING - (value / MAX_Y) * CHART_AREA;
 
-            // Línea Regresión
-            ctx.strokeStyle = '#06b6d4'; ctx.lineWidth = 3; ctx.beginPath();
-            ctx.moveTo(mapX(0), mapY(line.m * 0 + line.b));
-            ctx.lineTo(mapX(40), mapY(line.m * 40 + line.b));
+            // 1. Ejes
+            ctx.strokeStyle = '#9ca3af';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(PADDING, CHART_SIZE - PADDING);
+            ctx.lineTo(CHART_SIZE - PADDING, CHART_SIZE - PADDING);
+            ctx.moveTo(PADDING, CHART_SIZE - PADDING);
+            ctx.lineTo(PADDING, PADDING);
             ctx.stroke();
 
-            // Puntos
-            data.forEach(p => {
-                const cx = mapX(p.x), cy = mapY(p.y);
-                if (!isNaN(cx) && !isNaN(cy)) {
-                    drawnPoints.push({cx, cy, data: p});
-                    ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI*2);
-                    ctx.fillStyle = p.isSeed ? '#a5f3fc' : '#0f766e';
-                    ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#4b5563';
+            ctx.font = '12px Inter';
+            ctx.fillText('Horas de Estudio (X)', CHART_SIZE / 2 - 40, CHART_SIZE - 20);
+            ctx.save();
+            ctx.translate(5, CHART_SIZE / 2 + 30);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Nivel de Éxito (Y)', 0, 20);
+            ctx.restore();
+            
+            ctx.fillText('0', PADDING - 15, CHART_SIZE - PADDING + 5);
+            ctx.fillText('40', CHART_SIZE - PADDING - 15, CHART_SIZE - PADDING + 15);
+            ctx.fillText('10', PADDING - 20, PADDING + 10);
 
-                    if (p.name && !p.isSeed && hoveredPoint !== p) {
-                        const lbl = p.name; ctx.font = 'bold 12px Inter';
-                        const w = ctx.measureText(lbl).width;
-                        const rx = cx+8, ry = cy-6;
-                        let overlap = labels.some(r => rx < r.x+r.w && rx+w > r.x && ry < r.y+r.h && ry+14 > r.y);
-                        if (!overlap) {
-                            ctx.fillStyle = '#1f2937'; ctx.fillText(lbl, rx, cy+4);
-                            labels.push({x: rx, y: ry, w: w, h: 14});
+            // 2. Línea de Regresión
+            ctx.strokeStyle = '#06b6d4'; // Cyan
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            const yStart = line.m * 0 + line.b;
+            const yEnd = line.m * MAX_X + line.b;
+
+            if (!isNaN(yStart) && !isNaN(yEnd)) {
+                ctx.moveTo(mapToX(0), mapToY(yStart));
+                ctx.lineTo(mapToX(MAX_X), mapToY(yEnd));
+            }
+            ctx.stroke();
+
+            // 3. Puntos de Datos
+            dataPoints.forEach(point => {
+                const cx = mapToX(point.x);
+                const cy = mapToY(point.y);
+
+                if (!isNaN(cx) && !isNaN(cy)) {
+                    // Guardar coordenadas para el evento de mouse
+                    drawnPointsCoordinates.push({ cx, cy, data: point });
+
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 5, 0, Math.PI * 2, true); 
+                    ctx.fillStyle = point.isSeed ? '#a5f3fc' : '#0f766e'; 
+                    ctx.fill();
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    // Lógica para etiquetas: Solo mostrar si no hay colisión con otra etiqueta
+                    if (point.name && !point.isSeed) {
+                        const labelText = point.name;
+                        ctx.font = 'bold 12px Inter';
+                        const textWidth = ctx.measureText(labelText).width;
+                        const textHeight = 14; // Altura aprox
+                        
+                        // Rectángulo propuesto para el texto
+                        const labelX = cx + 8;
+                        const labelY = cy + 4;
+                        const labelRect = { x: labelX, y: labelY - 10, w: textWidth, h: textHeight };
+
+                        // Verificar colisiones
+                        let overlaps = false;
+                        for (const rect of placedLabels) {
+                            if (labelRect.x < rect.x + rect.w + 2 &&
+                                labelRect.x + labelRect.w + 2 > rect.x &&
+                                labelRect.y < rect.y + rect.h + 2 &&
+                                labelRect.y + labelRect.h + 2 > rect.y) {
+                                overlaps = true;
+                                break;
+                            }
+                        }
+
+                        // Solo dibujar si no se encima y NO es el punto que estamos haciendo hover (el tooltip lo cubrirá)
+                        if (!overlaps && hoveredDataPoint !== point) {
+                            ctx.fillStyle = '#1f2937'; 
+                            ctx.fillText(labelText, labelX, labelY);
+                            placedLabels.push(labelRect);
                         }
                     }
                 }
             });
 
-            // Tooltip
-            if (hoveredPoint) {
-                const p = hoveredPoint, hx = mapX(p.x), hy = mapY(p.y);
-                const txt = `${p.name||'Dato'}: ${p.x}h -> ${p.y}`;
-                ctx.fillStyle = 'rgba(31,41,55,0.9)'; const w = ctx.measureText(txt).width+16;
-                ctx.beginPath(); ctx.roundRect(hx+10, hy-30, w, 26, 4); ctx.fill();
-                ctx.fillStyle = '#fff'; ctx.fillText(txt, hx+18, hy-13);
-                ctx.beginPath(); ctx.arc(hx, hy, 7, 0, Math.PI*2); ctx.strokeStyle = '#fff'; ctx.stroke();
+            // 4. Dibujar Tooltip (Hover) por encima de todo
+            if (hoveredDataPoint) {
+                const p = hoveredDataPoint;
+                const hx = mapToX(p.x);
+                const hy = mapToY(p.y);
+                const tooltipText = `${p.name || 'Dato'}: ${p.x}h -> ${p.y}`;
+                
+                ctx.font = 'bold 12px Inter';
+                const tWidth = ctx.measureText(tooltipText).width + 16;
+                const tHeight = 26;
+                const tX = hx + 10;
+                const tY = hy - 10;
+
+                // Fondo del tooltip
+                ctx.fillStyle = 'rgba(31, 41, 55, 0.9)'; // Gris oscuro casi negro
+                ctx.beginPath();
+                ctx.roundRect(tX, tY - tHeight + 8, tWidth, tHeight, 4);
+                ctx.fill();
+
+                // Texto del tooltip
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(tooltipText, tX + 8, tY);
+                
+                // Resaltar el punto seleccionado
+                ctx.beginPath();
+                ctx.arc(hx, hy, 7, 0, Math.PI * 2);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+        
+        // ==========================================================
+        // FIREBASE AND DATA LOGIC
+        // ==========================================================
+
+        async function initFirebase() {
+            try {
+                // Initialize Firebase with the manual config object
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Autenticación anónima estándar
+                await signInAnonymously(auth);
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('userIdDisplay').innerText = `ID de Usuario: ${userId}`;
+                        setupDataListener();
+                    } else {
+                        console.error("Authentication failed.");
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error al inicializar Firebase:", error);
+                document.getElementById('loadingMessage').innerText = 'Error: Falta configuración. Abre el código y pega tus llaves de Firebase.';
+                document.getElementById('loadingMessage').classList.remove('hidden');
             }
         }
 
-        // Listeners
         function setupDataListener() {
-            // Nombre de la colección en TU base de datos
-            const q = query(collection(db, "study_success_data")); 
-            onSnapshot(q, (snap) => {
-                const fetched = [];
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    if (!isNaN(d.studyHours) && !isNaN(d.successScore)) 
-                        fetched.push({ x: Number(d.studyHours), y: Number(d.successScore), name: d.userName, isSeed: false });
+            if (!db || !userId) return;
+
+            // En una web estática propia, usamos una colección raíz simple
+            const collectionPath = "study_success_data"; 
+            const dataCollection = collection(db, collectionPath);
+            const dataQuery = query(dataCollection);
+
+            onSnapshot(dataQuery, (snapshot) => {
+                const fetchedData = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const studyHours = Number(data.studyHours);
+                    const successScore = Number(data.successScore);
+
+                    if (!isNaN(studyHours) && !isNaN(successScore)) {
+                        fetchedData.push({
+                            x: studyHours,
+                            y: successScore,
+                            isSeed: false,
+                            name: data.userName || 'Data',
+                        });
+                    }
                 });
-                allDataPoints = [...seedData, ...fetched];
+
+                allDataPoints = [...seedData, ...fetchedData];
                 regressionLine = calculateRegression(allDataPoints);
-                const m = regressionLine.m.toFixed(2), b = regressionLine.b.toFixed(2);
-                document.getElementById('lineEquation').innerText = `y = ${m}x + ${b}`;
-                drawChart(allDataPoints, regressionLine);
-                document.getElementById('loadingMessage').style.display = 'none';
+                
+                const m = regressionLine.m.toFixed(2);
+                const b = regressionLine.b.toFixed(2);
+                document.getElementById('lineEquation').innerText = `Ecuación Actual: Éxito = ${m} * Horas + ${b}`;
+                
+                drawChart(allDataPoints, regressionLine); 
+                
+                document.getElementById('loadingMessage').classList.add('hidden');
+                document.getElementById('submitBtn').disabled = false;
+            }, (error) => {
+                console.error("Error al escuchar datos de Firestore:", error);
             });
         }
 
-        // Eventos UI
+
+        // ==========================================================
+        // UI AND FORM LOGIC
+        // ==========================================================
+        
         document.getElementById('dataForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const name = document.getElementById('userName').value;
-            const x = Number(document.getElementById('studyHours').value);
-            const y = Number(document.getElementById('successScore').value);
-            const pred = regressionLine.m * x + regressionLine.b;
+
+            if (!db || !userId) {
+                alert('La base de datos no está conectada. Revisa la configuración en el código.');
+                return;
+            }
+
+            const userName = document.getElementById('userName').value.trim() || 'Espectador';
+            const studyHours = Number(document.getElementById('studyHours').value);
+            const successScore = Number(document.getElementById('successScore').value);
+
+            const pointForFirestore = { x: studyHours, y: successScore, name: userName };
+            const predictedSuccess = regressionLine.m * studyHours + regressionLine.b;
+
+            const resultBox = document.getElementById('resultBox');
+            const resultText = document.getElementById('predictionResult');
             
-            document.getElementById('predictionResult').innerText = `${pred.toFixed(2)} / 10`;
-            document.getElementById('resultBox').classList.remove('hidden');
+            // resultText.innerText = `Predicción para ${userName}: ${predictedSuccess.toFixed(2)} de 10`;
+            resultBox.classList.remove('hidden');
 
             try {
-                await addDoc(collection(db, "study_success_data"), {
-                    studyHours: x, successScore: y, userName: name, timestamp: serverTimestamp()
+                // Usamos la misma colección raíz simple
+                const collectionPath = "study_success_data";
+                await addDoc(collection(db, collectionPath), {
+                    studyHours: pointForFirestore.x,
+                    successScore: pointForFirestore.y,
+                    predicted: predictedSuccess.toFixed(2),
+                    userName: userName,
+                    userId: userId,
+                    timestamp: serverTimestamp()
                 });
-            } catch (err) { console.error("Error guardando:", err); alert("Error guardando datos. Revisa la consola."); }
+            } catch (error) {
+                console.error("Error al guardar el documento:", error);
+                alert("Error al guardar: " + error.message);
+            }
         });
 
         document.getElementById('predictBtn').addEventListener('click', () => {
-            const x = Number(document.getElementById('predictHours').value);
-            const val = Math.max(0, Math.min(10, regressionLine.m * x + regressionLine.b));
-            document.getElementById('predictionText').innerText = `${val.toFixed(2)} / 10`;
+            const hoursToPredict = Number(document.getElementById('predictHours').value);
+            const predictedSuccess = regressionLine.m * hoursToPredict + regressionLine.b;
+            const resultTextBox = document.getElementById('predictionText');
+            const resultBox = document.getElementById('predictionResultBox');
+            const clampedPrediction = Math.max(0, Math.min(10, predictedSuccess));
+
+            resultTextBox.innerText = `Éxito Predicho: ${clampedPrediction.toFixed(2)} de 10`;
+            resultBox.classList.remove('hidden');
         });
 
+        initFirebase();
         drawChart(seedData, regressionLine);
+
     </script>
 </body>
 </html>
